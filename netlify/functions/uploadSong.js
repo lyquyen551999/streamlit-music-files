@@ -7,7 +7,6 @@ exports.handler = async function (event) {
 
   const { filename, base64Content } = JSON.parse(event.body);
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-  const REPO = "lyquyen551999/streamlit-music-files";
 
   const url = `https://api.github.com/repos/lyquyen551999/streamlit-music-files/contents/songs/${filename}`;
 
