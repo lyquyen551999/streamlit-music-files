@@ -279,29 +279,45 @@ async function uploadSong() {
 
   const reader = new FileReader();
   reader.onload = async () => {
-    const base64Content = reader.result.split(',')[1];
+    try {
+      const resultDataUrl = reader.result;
+      if (!resultDataUrl.startsWith('data:audio/mp3;base64,')) {
+        return alert("❌ Invalid file format.");
+      }
 
-    const res = await fetch('/.netlify/functions/uploadSong', {
-      method: 'POST',
-      body: JSON.stringify({
-        filename: file.name,
-        base64Content: base64Content
-      })
-    });
+      const base64Content = resultDataUrl.split(',')[1];
+      if (!base64Content || base64Content.length < 100) {
+        return alert("❌ Base64 encoding failed or file too small.");
+      }
 
-    const result = await res.json();
-    if (res.ok) {
-      alert("✅ Upload successful!");
-      await fetchSongs();
-      audioSelect.selectedIndex = audioSelect.options.length - 1;
-      player.src = audioSelect.value;
-      status.innerText = '✅ Song list updated instantly.';
-    } else {
-      alert("❌ Upload failed: " + result.message);
+      const res = await fetch('/.netlify/functions/uploadSong', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          base64Content: base64Content
+        })
+      });
+
+      const result = await res.json();
+      if (res.ok) {
+        alert("✅ Upload successful!");
+        await fetchSongs();
+        audioSelect.selectedIndex = audioSelect.options.length - 1;
+        player.src = audioSelect.value;
+        status.innerText = '✅ Song list updated instantly.';
+      } else {
+        alert("❌ Upload failed: " + (result.message || 'Unknown error'));
+        console.error("Upload Error:", result);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      alert("❌ Unexpected error occurred.");
     }
   };
   reader.readAsDataURL(file);
 }
+
 
 async function deleteSong() {
   const selectedSong = audioSelect.value;
