@@ -1,6 +1,9 @@
 {
   "name": "listening-party",
   "version": "1.0.0",
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  },
   "scripts": {
     "build": "echo 'Triggering build...'"
   }
