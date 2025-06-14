@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎧 Listening Party</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 30px 40px;
+      width: 95%;
+      max-width: 500px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    h1 { font-weight: 600; margin-bottom: 20px; font-size: 24px; }
+    input[type="text"], select {
+      width: 100%;
+      padding: 12px 15px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      font-size: 16px;
+      outline: none;
+      backdrop-filter: blur(6px);
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 6px 0;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      background: #00adb5;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover { background: #00c3cc; }
+    #adminControls {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    #adminControls button {
+      width: calc(50% - 10px);
+      background: #393e46;
+    }
+    #adminControls button:hover { background: #4e5563; }
+    audio { margin-top: 20px; width: 100%; }
+    #status { margin-top: 15px; font-size: 14px; color: #eee; }
+    select { color: white !important; }
+    select option { color: black; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🎧 Listening Party</h1>
+  <input id="roomId" placeholder="Room ID (e.g. party123)" type="text"/>
+  <label><input id="isHost" onchange="toggleAudioInput()" type="checkbox"/> I am the Host</label>
+  <select id="audioSelect" style="display:none"></select>
+  <input id="audioURL" placeholder="MP3 URL (host only)" type="text"/>
+  <button id="createBtn" onclick="createRoom()">📌 Create Room</button>
+  <button id="joinBtn" onclick="joinRoom()">🔗 Join Room</button>
+  <button id="leaveBtn" onclick="leaveRoom()" style="display:none">🚪 Leave Room</button>
+  <div id="uploadSection" style="display:none; margin-top: 20px;">
+    <input accept=".mp3" id="fileInput" type="file"/>
+    <button onclick="uploadSong()">📤 Upload Song</button>
+    <button onclick="deleteSong()">🗑️ Delete Selected Song</button>
+  </div>
+  <div id="adminControls" style="display:none">
+    <button onclick="playMusic()">🎵 Play selected song</button>
+    <button onclick="toggleRepeat()">🔁 Repeat</button>
+    <button onclick="toggleShuffle()">🔀 Shuffle</button>
+  </div>
+  <audio controls id="player"></audio>
+  <p id="status"></p>
+</div>
+
+<script>
+let db, roomId = "", hostId = "", userId = "user_" + Math.random().toString(36).substr(2, 9);
+const GITHUB_TOKEN = "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";
+let isRepeat = false, isShuffle = false, songList = [];
+const player = document.getElementById('player');
+const status = document.getElementById('status');
+const isHost = document.getElementById('isHost');
+const audioURL = document.getElementById('audioURL');
+const audioSelect = document.getElementById('audioSelect');
+const adminControls = document.getElementById('adminControls');
+
+function loadScript(src) {
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    document.head.appendChild(s);
+  });
+}
+
+function toggleAudioInput() {
+  const checked = isHost.checked;
+  audioSelect.style.display = checked ? 'inline' : 'none';
+  audioURL.style.display = checked ? 'none' : 'inline';
+  document.getElementById('uploadSection').style.display = checked ? 'block' : 'none';
+  if (checked) fetchSongs();
+}
+
+async function createRoom() {
+  roomId = document.getElementById('roomId').value.trim();
+  if (!roomId) return alert("Enter a Room ID");
+
+  await initFirebase();
+  const roomRef = db.ref(`rooms/${roomId}`);
+  const snap = await roomRef.get();
+  if (snap.exists()) return alert("Room already exists");
+
+  const song = audioSelect.value || audioURL.value;
+  if (!song || !song.endsWith(".mp3")) return alert("Invalid song URL");
+
+  hostId = userId;
+  await roomRef.set({ current_song: song, is_playing: false, last_updated: 0, host_id: hostId });
+  await db.ref(`rooms/${roomId}/members/${userId}`).set(true);
+  db.ref(`rooms/${roomId}/members/${userId}`).onDisconnect().remove();
+
+  player.src = song;
+  adminControls.style.display = 'block';
+  document.getElementById("createBtn").innerText = "✅ Room Created";
+  isHost.disabled = true;
+  document.getElementById("createBtn").disabled = true;
+  document.getElementById("leaveBtn").style.display = 'block';
+  document.getElementById("joinBtn").disabled = true;
+  status.innerText = `Room '${roomId}' created. Waiting to play.`;
+}
+
+async function joinRoom() {
+  roomId = document.getElementById('roomId').value.trim();
+  if (!roomId) return alert("Enter Room ID");
+
+  await initFirebase();
+  const roomSnap = await db.ref(`rooms/${roomId}`).get();
+  if (!roomSnap.exists()) return alert("Room does not exist");
+
+  const data = roomSnap.val();
+  hostId = data.host_id;
+
+  // ⛔ Ngăn người không phải host giả làm host
+  if (userId !== hostId) {
+    isHost.checked = false;
+    isHost.disabled = true;
+    toggleAudioInput(); // Ẩn upload, admin controls
+  } else {
+    isHost.checked = true;
+    toggleAudioInput(); // Hiện quyền điều khiển
+  }
+
+  // Thêm user vào phòng
+  await db.ref(`rooms/${roomId}/members/${userId}`).set(true);
+  db.ref(`rooms/${roomId}/members/${userId}`).onDisconnect().remove();
+
+  // UI update
+  document.getElementById("joinBtn").innerText = "✅ Joined Room";
+  document.getElementById("joinBtn").disabled = true;
+  document.getElementById("leaveBtn").style.display = 'block';
+  document.getElementById("createBtn").disabled = true;
+  isHost.disabled = true;
+
+  // Người không phải host chỉ được nghe
+  if (userId !== hostId) {
+    audioSelect.disabled = true;
+    audioURL.disabled = true;
+    db.ref(`rooms/${roomId}`).on('value', snap => {
+      const val = snap.val();
+      if (!val) return;
+      player.src = val.current_song;
+      if (val.is_playing) {
+        const offset = Math.floor(Date.now() / 1000) - val.last_updated;
+        player.currentTime = offset;
+        player.play().catch(() => status.innerText = "Autoplay blocked");
+        status.innerText = `🎶 Playing from ${offset}s`;
+      } else {
+        player.pause();
+        status.innerText = `⏸ Host paused.`;
+      }
+    });
+  } else {
+    fetchSongs();
+  }
+}
+
+
+async function initFirebase() {
+  if (db) return;
+  await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js');
+  await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js');
+  firebase.initializeApp({ databaseURL: "https://modernmusiclite-default-rtdb.asia-southeast1.firebasedatabase.app/" });
+  db = firebase.database();
+}
+
+function playMusic() {
+  const song = audioSelect.value;
+  if (!song) return;
+  player.src = song;
+  player.play();
+  db.ref(`rooms/${roomId}`).update({
+    current_song: song,
+    is_playing: true,
+    last_updated: Math.floor(Date.now() / 1000)
+  });
+}
+
+function toggleRepeat() {
+  isRepeat = !isRepeat;
+  alert("Repeat is now " + (isRepeat ? "ON" : "OFF"));
+}
+function toggleShuffle() {
+  isShuffle = !isShuffle;
+  alert("Shuffle is now " + (isShuffle ? "ON" : "OFF"));
+}
+
+player.onended = () => {
+  if (isRepeat) {
+    player.currentTime = 0;
+    player.play();
+  } else if (isShuffle && isHost.checked && songList.length > 0) {
+    const song = songList[Math.floor(Math.random() * songList.length)];
+    db.ref(`rooms/${roomId}`).update({ current_song: song, is_playing: true, last_updated: Math.floor(Date.now() / 1000) });
+    player.src = song;
+    player.play();
+  } else {
+    status.innerText = "⏹ End of song.";
+  }
+};
+
+async function fetchSongs() {
+  status.innerText = "🔄 Refreshing song list...";
+  const repo = 'lyquyen551999/streamlit-music-files';
+  const url = `https://api.github.com/repos/${repo}/contents/songs`;
+  const res = await fetch(url, { cache: "no-store" });
+  const files = await res.json();
+  audioSelect.innerHTML = '';
+  songList = [];
+  files.filter(f => f.name.endsWith('.mp3')).forEach(f => {
+    const fileUrl = `https://cdn.jsdelivr.net/gh/${repo}/songs/${f.name}`;
+    const opt = document.createElement("option");
+    opt.value = fileUrl;
+    opt.textContent = f.name.replace(/\.mp3$/i, '');
+    audioSelect.appendChild(opt);
+    songList.push(fileUrl);
+  });
+  if (songList.length > 0) audioSelect.selectedIndex = 0;
+  status.innerText = "✅ Song list updated.";
+}
+
+async function uploadSong() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file || !file.name.endsWith(".mp3")) return alert("Please choose a .mp3 file");
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const base64Content = reader.result.split(',')[1];
+
+    const res = await fetch('/.netlify/functions/uploadSong', {
+      method: 'POST',
+      body: JSON.stringify({
+        filename: file.name,
+        base64Content: base64Content
+      })
+    });
+
+    const result = await res.json();
+    if (res.ok) {
+      alert("✅ Upload successful!");
+      await fetchSongs();
+      audioSelect.selectedIndex = audioSelect.options.length - 1;
+      player.src = audioSelect.value;
+      status.innerText = '✅ Song list updated instantly.';
+    } else {
+      alert("❌ Upload failed: " + result.message);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function deleteSong() {
+  const selectedSong = audioSelect.value;
+  if (!selectedSong) return alert("Please select a song to delete.");
+
+  const filename = selectedSong.split('/').pop().split('?')[0];
+
+  const shaRes = await fetch(`https://api.github.com/repos/lyquyen551999/streamlit-music-files/contents/songs/${filename}`);
+  const shaData = await shaRes.json();
+  if (!shaData.sha) return alert("❌ Failed to get SHA for deletion.");
+
+  const res = await fetch('/.netlify/functions/deleteSong', {
+    method: 'POST',
+    body: JSON.stringify({
+      filename: filename,
+      sha: shaData.sha
+    })
+  });
+
+  const result = await res.json();
+  if (res.ok) {
+    alert("✅ Deleted successfully.");  
+    await fetchSongs();
+    audioSelect.selectedIndex = audioSelect.options.length - 1;
+    player.src = audioSelect.value;
+    status.innerText = '✅ Song list updated instantly.';
+  } else {
+    alert("❌ Delete failed: " + result.message);
+  }
+}
+
+function leaveRoom() {
+  if (!roomId || !db) return location.reload();
+  db.ref(`rooms/${roomId}/members/${userId}`).remove();
+  db.ref(`rooms/${roomId}/members`).once('value', snap => {
+    if (!snap.exists() || Object.keys(snap.val()).length === 0 || userId === hostId) {
+      db.ref(`rooms/${roomId}`).remove();
+    }
+    location.reload();
+  });
+}
+</script>
+</body>
+</html>
