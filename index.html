@@ -276,58 +276,42 @@ async function fetchSongs() {
 async function uploadSong() {
   const file = document.getElementById("fileInput").files[0];
   if (!file || !file.name.endsWith(".mp3")) {
-    alert("Please choose a .mp3 file");
-    return;
+    return alert("Please choose a .mp3 file");
   }
-
-  // 🔒 Giới hạn dung lượng: 8MB
-  if (file.size > 8 * 1024 * 1024) {
-    alert("File too large. Please upload files smaller than 8MB.");
-    return;
-  }
-
-  // 🧼 Sanitize tên file
-  const safeName = file.name.replace(/[^\w.-]/g, "_");
 
   const reader = new FileReader();
   reader.onload = async () => {
-    const result = reader.result;
-
-    // 🛡 Kiểm tra tính hợp lệ của kết quả đọc
-    if (!result || typeof result !== "string" || !result.includes(",")) {
-      alert("Failed to read file correctly.");
-      return;
-    }
-
-    const base64Content = result.split(",")[1];
-
     try {
-      const res = await fetch("/.netlify/functions/uploadSong", {
+      const base64Content = reader.result.split(',')[1]; // bỏ prefix data:audio/mp3;base64,
+      if (!base64Content) throw new Error("Invalid base64 result");
+
+      const res = await fetch('/.netlify/functions/uploadSong', {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          filename: safeName,
-          content: base64Content
-        })
+          name: file.name,
+          content: base64Content,
+        }),
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ Upload successful!");
-        fetchSongs(); // refresh song list
-      } else {
-        alert("❌ Upload failed: " + (data.error || res.statusText));
+      if (!res.ok) {
+        const errMsg = await res.text();
+        throw new Error(`Upload failed: ${res.status} ${errMsg}`);
       }
+
+      const result = await res.json();
+      alert("✅ Upload success!");
+      fetchSongs();
     } catch (err) {
-      console.error("Upload error:", err);
-      alert("❌ Upload failed due to an unexpected error.");
+      alert("❌ Upload failed: " + err.message);
+      console.error("Upload Error:", err);
     }
   };
-
   reader.readAsDataURL(file);
 }
+
 
 
 async function deleteSong() {
