@@ -6,6 +6,9 @@
   <title>🎧 Listening Party</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
   <style>
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
     body {
       margin: 0;
       font-family: 'Poppins', sans-serif;
@@ -74,12 +77,13 @@
   <h1>🎧 Listening Party</h1>
   <input id="roomId" placeholder="Room ID (e.g. party123)" type="text"/>
   <label><input id="isHost" onchange="toggleAudioInput()" type="checkbox"/> I am the Host</label>
-  <div style="display: flex; align-items: center; gap: 8px;">
+  <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
     <select id="audioSelect" style="flex: 1;"></select>
-    <button onclick="fetchSongs()" 
-            title="Reload song list"
-            style="width: 40px; height: 40px; font-size: 18px; border-radius: 12px;
-                   background-color: #00bcd4; color: white; border: none; cursor: pointer;">
+    <button onclick="fetchSongs()"
+        title="Reload song list"
+        style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+               font-size: 18px; border-radius: 10px; background-color: #00bcd4; color: white;
+               border: none; cursor: pointer; flex-shrink: 0;">
       🔄
     </button>
   </div>
