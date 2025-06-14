@@ -74,10 +74,27 @@
   <h1>🎧 Listening Party</h1>
   <input id="roomId" placeholder="Room ID (e.g. party123)" type="text"/>
   <label><input id="isHost" onchange="toggleAudioInput()" type="checkbox"/> I am the Host</label>
-  <div id="songControls" style="display:none; display: flex; gap: 6px; align-items: center;">
-  <select id="audioSelect"></select>
-  <button onclick="fetchSongs()" title="Refresh song list">🔄</button>
+  <div style="display: flex; align-items: center; gap: 6px; justify-content: center;">
+    <select id="audioSelect" style="flex: 1; min-width: 0;"></select>
+      <button onclick="fetchSongs()" title="Refresh song list"
+        style="
+          width: 36px;
+          height: 36px;
+          font-size: 18px;
+          background-color: #444;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+        ">
+        🔄
+      </button>
   </div>
+
   <input id="audioURL" placeholder="MP3 URL (host only)" type="text"/>
   <button id="createBtn" onclick="createRoom()">📌 Create Room</button>
   <button id="joinBtn" onclick="joinRoom()">🔗 Join Room</button>
@@ -117,7 +134,7 @@ function loadScript(src) {
 
 function toggleAudioInput() {
   const checked = isHost.checked;
-  document.getElementById('songControls').style.display = checked ? 'flex' : 'none';
+  document.getElementById('audioSelect').parentElement.style.display = checked ? 'flex' : 'none';
   audioURL.style.display = checked ? 'none' : 'inline';
   document.getElementById('uploadSection').style.display = checked ? 'block' : 'none';
   if (checked) fetchSongs();
