@@ -252,18 +252,26 @@ async function fetchSongs() {
   const url = `https://api.github.com/repos/${repo}/contents/songs`;
   const res = await fetch(url, { cache: "no-store" });
   const files = await res.json();
+
   audioSelect.innerHTML = '';
   songList = [];
-  files.filter(f => f.name.endsWith('.mp3')).forEach(f => {
-    const fileUrl = `https://cdn.jsdelivr.net/gh/${repo}/songs/${f.name}`;
-    const opt = document.createElement("option");
-    opt.value = fileUrl;
-    opt.textContent = f.name.replace(/\.mp3$/i, '');
-    audioSelect.appendChild(opt);
-    songList.push(fileUrl);
-  });
-  if (songList.length > 0) audioSelect.selectedIndex = 0;
-  status.innerText = "✅ Song list updated.";
+
+  if (Array.isArray(files)) {
+    files.filter(f => f.name.endsWith('.mp3')).forEach(f => {
+      const fileUrl = `https://cdn.jsdelivr.net/gh/${repo}/songs/${f.name}`;
+      const opt = document.createElement("option");
+      opt.value = fileUrl;
+      opt.textContent = f.name.replace(/\.mp3$/i, '');
+      audioSelect.appendChild(opt);
+      songList.push(fileUrl);
+    });
+
+    if (songList.length > 0) audioSelect.selectedIndex = 0;
+    status.innerText = "✅ Song list updated.";
+  } else {
+    status.innerText = "❌ Failed to load song list.";
+    console.error("GitHub API error:", files);
+  }
 }
 
 async function uploadSong() {
