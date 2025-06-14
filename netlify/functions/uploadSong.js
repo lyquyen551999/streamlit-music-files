@@ -9,7 +9,7 @@ exports.handler = async function (event) {
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
   const REPO = "lyquyen551999/streamlit-music-files";
 
-  const url = `https://api.github.com/repos/${REPO}/contents/songs/${filename}`;
+  const url = `https://api.github.com/repos/lyquyen551999/streamlit-music-files/contents/songs/${filename}`;
 
   const res = await fetch(url, {
     method: 'PUT',
