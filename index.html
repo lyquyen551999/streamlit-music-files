@@ -248,8 +248,7 @@ player.onended = () => {
 
 async function fetchSongs() {
   status.innerText = "🔄 Refreshing song list...";
-  const repo = 'lyquyen551999/streamlit-music-files';
-  const url = `https://api.github.com/repos/${repo}/contents/songs`;
+  const url = `https://api.github.com/repos/lyquyen551999/streamlit-music-files/contents/songs`;
   const res = await fetch(url, { cache: "no-store" });
   const files = await res.json();
 
@@ -258,7 +257,7 @@ async function fetchSongs() {
 
   if (Array.isArray(files)) {
     files.filter(f => f.name.endsWith('.mp3')).forEach(f => {
-      const fileUrl = `https://cdn.jsdelivr.net/gh/${repo}/songs/${f.name}`;
+      const fileUrl = `https://cdn.jsdelivr.net/gh/lyquyen551999/streamlit-music-files/songs/${f.name}`;
       const opt = document.createElement("option");
       opt.value = fileUrl;
       opt.textContent = f.name.replace(/\.mp3$/i, '');
