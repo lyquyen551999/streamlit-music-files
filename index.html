@@ -75,6 +75,7 @@
   <input id="roomId" placeholder="Room ID (e.g. party123)" type="text"/>
   <label><input id="isHost" onchange="toggleAudioInput()" type="checkbox"/> I am the Host</label>
   <select id="audioSelect" style="display:none"></select>
+  <button onclick="fetchSongs()" style="margin-left: 6px;" title="Refresh song list">🔄</button>
   <input id="audioURL" placeholder="MP3 URL (host only)" type="text"/>
   <button id="createBtn" onclick="createRoom()">📌 Create Room</button>
   <button id="joinBtn" onclick="joinRoom()">🔗 Join Room</button>
