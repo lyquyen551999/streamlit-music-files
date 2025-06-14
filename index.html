@@ -165,13 +165,15 @@ async function joinRoom() {
 
   // ⛔ Ngăn người không phải host giả làm host
   if (userId !== hostId) {
-    isHost.checked = false;
-    isHost.disabled = true;
-    toggleAudioInput(); // Ẩn upload, admin controls
-  } else {
-    isHost.checked = true;
-    toggleAudioInput(); // Hiện quyền điều khiển
-  }
+  isHost.checked = false;
+  isHost.disabled = true;
+  toggleAudioInput(); // Ẩn upload, admin controls
+  document.getElementById('uploadSection').style.display = 'none'; // 🆕 Thêm dòng này
+} else {
+  isHost.checked = true;
+  toggleAudioInput(); // Hiện quyền điều khiển
+}
+
 
   // Thêm user vào phòng
   await db.ref(`rooms/${roomId}/members/${userId}`).set(true);
@@ -301,6 +303,7 @@ async function fetchSongs() {
 }
 
 async function uploadSong() {
+if (userId !== hostId) return alert("Only the host can upload songs.");
   const file = document.getElementById('fileInput').files[0];
   if (!file || !file.name.toLowerCase().endsWith(".mp3")) {
     return alert("Please choose a .mp3 file");
@@ -362,6 +365,7 @@ async function uploadSong() {
 
 
 async function deleteSong() {
+if (userId !== hostId) return alert("Only the host can delete songs.");
   const selectedSong = audioSelect.value;
   if (!selectedSong) return alert("Please select a song to delete.");
 
