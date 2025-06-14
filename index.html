@@ -209,6 +209,17 @@ async function initFirebase() {
   await loadScript('https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js');
   firebase.initializeApp({ databaseURL: "https://modernmusiclite-default-rtdb.asia-southeast1.firebasedatabase.app/" });
   db = firebase.database();
+
+  // Dọn phòng nếu không còn thành viên (tự động check mỗi 15 giây)
+  setInterval(async () => {
+    if (roomId && db) {
+      const membersSnap = await db.ref(`rooms/${roomId}/members`).once('value');
+      if (!membersSnap.exists()) {
+        await db.ref(`rooms/${roomId}`).remove();
+        console.log(`[AUTO CLEANUP] Room '${roomId}' deleted due to no members.`);
+      }
+    }
+  }, 15000);
 }
 
 function playMusic() {
@@ -366,12 +377,14 @@ async function deleteSong() {
 
 function leaveRoom() {
   if (!roomId || !db) return location.reload();
-  db.ref(`rooms/${roomId}/members/${userId}`).remove();
-  db.ref(`rooms/${roomId}/members`).once('value', snap => {
-    if (!snap.exists() || Object.keys(snap.val()).length === 0 || userId === hostId) {
-      db.ref(`rooms/${roomId}`).remove();
-    }
-    location.reload();
+  db.ref(`rooms/${roomId}/members/${userId}`).remove().then(() => {
+    db.ref(`rooms/${roomId}/members`).once('value', snap => {
+      if (!snap.exists() || Object.keys(snap.val()).length === 0) {
+        db.ref(`rooms/${roomId}`).remove();
+        console.log(`[MANUAL CLEANUP] Room '${roomId}' deleted.`);
+      }
+      location.reload();
+    });
   });
 }
 </script>
