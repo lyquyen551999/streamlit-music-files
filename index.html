@@ -275,32 +275,44 @@ async function fetchSongs() {
 
 async function uploadSong() {
   const file = document.getElementById('fileInput').files[0];
-  if (!file || !file.name.endsWith(".mp3")) return alert("Please choose a .mp3 file");
+  if (!file || !file.name.toLowerCase().endsWith(".mp3")) {
+    return alert("Please choose a .mp3 file");
+  }
 
   const reader = new FileReader();
+
   reader.onload = async () => {
+    const resultDataUrl = reader.result;
+
+    // Kiểm tra định dạng Data URL (MIME type phải đúng chuẩn mp3)
+    if (!/^data:audio\/(mpeg|mp3);base64,/.test(resultDataUrl)) {
+      return alert("❌ Invalid file format.");
+    }
+
+    const base64Content = resultDataUrl.split(',')[1];
+
     try {
-      const resultDataUrl = reader.result;
-
-      if (!/^data:audio\/(mpeg|mp3);base64,/.test(resultDataUrl)) {
-        return alert("❌ Invalid file format.");
-      }
-
-      const base64Content = resultDataUrl.split(',')[1];
-      if (!base64Content || base64Content.length < 100) {
-        return alert("❌ File content is too short or corrupted.");
-      }
-
       const res = await fetch('/.netlify/functions/uploadSong', {
         method: 'POST',
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           filename: file.name,
           base64Content: base64Content
         })
       });
 
-      const result = await res.json();
+      // Tránh lỗi khi server không trả về JSON hợp lệ
+      const resultText = await res.text();
+      let result;
+      try {
+        result = JSON.parse(resultText);
+      } catch (e) {
+        console.error("Invalid JSON response:", resultText);
+        return alert("❌ Upload failed: Invalid server response.");
+      }
+
       if (res.ok) {
         alert("✅ Upload successful!");
         await fetchSongs();
@@ -308,16 +320,18 @@ async function uploadSong() {
         player.src = audioSelect.value;
         status.innerText = '✅ Song list updated instantly.';
       } else {
-        alert("❌ Upload failed: " + (result.message || 'Unknown error'));
+        alert("❌ Upload failed: " + (result.message || res.statusText));
         console.error("Upload Error:", result);
       }
     } catch (err) {
-      console.error("Unexpected error:", err);
-      alert("❌ Unexpected error occurred.");
+      console.error("Unexpected upload error:", err);
+      alert("❌ Upload failed due to network or server error.");
     }
   };
+
   reader.readAsDataURL(file);
 }
+
 
 
 async function deleteSong() {
