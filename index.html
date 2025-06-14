@@ -210,6 +210,17 @@ async function initFirebase() {
   firebase.initializeApp({ databaseURL: "https://modernmusiclite-default-rtdb.asia-southeast1.firebasedatabase.app/" });
   db = firebase.database();
 
+  window.addEventListener('beforeunload', async () => {
+  if (roomId && userId) {
+    try {
+      await db.ref(`rooms/${roomId}/members/${userId}`).remove();
+    } catch (e) {
+      console.warn("⚠️ Failed to remove user on unload:", e);
+    }
+  }
+});
+
+
   // Dọn phòng nếu không còn thành viên (tự động check mỗi 15 giây)
   setInterval(async () => {
     if (roomId && db) {
