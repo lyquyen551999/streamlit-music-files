@@ -74,8 +74,10 @@
   <h1>🎧 Listening Party</h1>
   <input id="roomId" placeholder="Room ID (e.g. party123)" type="text"/>
   <label><input id="isHost" onchange="toggleAudioInput()" type="checkbox"/> I am the Host</label>
-  <select id="audioSelect" style="display:none"></select>
-  <button onclick="fetchSongs()" style="margin-left: 6px;" title="Refresh song list">🔄</button>
+  <div id="songControls" style="display:none; display: flex; gap: 6px; align-items: center;">
+  <select id="audioSelect"></select>
+  <button onclick="fetchSongs()" title="Refresh song list">🔄</button>
+  </div>
   <input id="audioURL" placeholder="MP3 URL (host only)" type="text"/>
   <button id="createBtn" onclick="createRoom()">📌 Create Room</button>
   <button id="joinBtn" onclick="joinRoom()">🔗 Join Room</button>
@@ -115,7 +117,7 @@ function loadScript(src) {
 
 function toggleAudioInput() {
   const checked = isHost.checked;
-  audioSelect.style.display = checked ? 'inline' : 'none';
+  document.getElementById('songControls').style.display = checked ? 'flex' : 'none';
   audioURL.style.display = checked ? 'none' : 'inline';
   document.getElementById('uploadSection').style.display = checked ? 'block' : 'none';
   if (checked) fetchSongs();
